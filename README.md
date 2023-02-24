@@ -2,10 +2,8 @@
 
 ### Example usage
 
-Below is a slightly contrived example showing a number of possible supported operations:
-
 ```python
-from cgrad.engine import Value
+from mars.engine import Value
 
 a = Value(-4.0)
 b = Value(2.0)
