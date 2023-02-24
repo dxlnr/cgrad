@@ -6,7 +6,7 @@
 typedef struct 
 {
     PyObject_HEAD
-    float storage;
+    double data;
     /* float grad; */
     /* enum Ops ops; */
     /* struct Value *operands; */
@@ -15,17 +15,31 @@ typedef struct
 static PyObject *
 Value_new(PyTypeObject *type, PyObject *args)
 {
-    /* float x; */
-    /* PyArg_ParseTuple(args, "i", &x); */
+    double data;
+    if (!PyArg_ParseTuple(args, "d", &data))
+        return NULL;
     
     Value *self;
     self = (Value *) type->tp_alloc(type, 0);
     if (self != NULL) {
-        self -> storage = 0.0;
+        self -> data = data;
     }
     return (PyObject *) self;
 }
 
+static PyObject *
+Value_get_data(Value *self, void *closure)
+{
+    return (PyObject *) PyFloat_FromDouble((double) self->data);
+}
+
+static PyGetSetDef Value_getsetters[] = {
+    {"data", (getter) Value_get_data, 
+     "Data stored in Value.", NULL},
+    {NULL}  
+};
+
+/// Compose the bindings.
 static PyTypeObject ValueType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "engine.Engine",
@@ -35,6 +49,7 @@ static PyTypeObject ValueType = {
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = Value_new,
+    .tp_getset = Value_getsetters,
 };
 
 static PyModuleDef cmodule = {
