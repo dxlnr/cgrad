@@ -3,7 +3,7 @@ import unittest
 from mars.engine import Value
 
 
-class TestVariable(unittest.TestCase):
+class TestValue(unittest.TestCase):
 
     def test_value_basics(self):
         # Basic Test if the Value setup is correct.
@@ -16,10 +16,14 @@ class TestVariable(unittest.TestCase):
         # Additional Operations
         d = a * b + b**3
         self.assertEqual(0.0, d.data)
-        # c += c + 1
-        # c += 1 + c + (-a)
-        # d += d * 2 + (b + a).relu()
+        # Relu Operation
+        c += c + 1
+        c += 1 + c + (-a)
+        d += d * 2 + (b + a).relu()
+        self.assertEqual(0.0, d.data)
         # d += 3 * d + (b - a).relu()
+        # self.assertEqual(6.0, d.data)
+
         # e = c - d
         # f = e**2
         # g = f / 2.0

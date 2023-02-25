@@ -15,6 +15,11 @@ typedef struct
 
 static PyTypeObject ValueType;
 
+static void Value_dealloc(Value *self)
+{
+    Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
 static PyObject *
 Value_new(PyTypeObject *type, PyObject *args)
 {
@@ -33,7 +38,8 @@ Value_new(PyTypeObject *type, PyObject *args)
 
 /* 
  * Implement Operand Options for Value
- * Addition, Subtraction, Mulitplication, Power
+ *
+ * Addition, Subtraction, Mulitplication, Power, Negative
 */
 PyObject *value_add(PyObject *self, PyObject *other)
 {
@@ -67,6 +73,12 @@ PyObject *value_pow(PyObject *self, PyObject *power)
     return (PyObject *) res;
 }
 
+PyObject *value_neg(PyObject *self)
+{
+    ((Value *) self)->data = ((Value *) self)->data * (double) (-1);
+    return (PyObject *) self;
+}
+
 static PyNumberMethods Value_as_number_module = {
     value_add,
     value_sub,
@@ -74,7 +86,7 @@ static PyNumberMethods Value_as_number_module = {
     0,
     0,
     value_pow,
-    0,
+    value_neg,
     0,
     0,
     0,
@@ -115,6 +127,24 @@ static PyGetSetDef Value_getsetters[] = {
     {NULL}  
 };
 
+
+/* 
+ * Custom Methods for Value
+ */
+static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
+{
+    if (self->data < 0)
+        self->data = 0.0;
+    return (PyObject *) self;
+}
+
+static PyMethodDef Value_methods[] = {
+    {"relu", (PyCFunction) value_relu, METH_NOARGS,
+     "ReLU (rectified linear unit) activation function."
+    },
+    {NULL} 
+};
+
 /*
  * Compose the meta data of Value type & define the module.
  */
@@ -127,8 +157,10 @@ static PyTypeObject ValueType = {
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = Value_new,
+    .tp_dealloc = (destructor) Value_dealloc,
     /* .tp_members = Value_members, */
     .tp_getset = Value_getsetters,
+    .tp_methods = Value_methods,
     .tp_as_number = &Value_as_number_module,
 };
 
