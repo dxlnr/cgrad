@@ -17,7 +17,7 @@ typedef struct
 } Value;
 
 // Doubly Linked List 
-typedef struct {
+typedef struct node {
     Value *value;
     struct node *next;
     struct node *prev;
@@ -64,6 +64,7 @@ Value_new(PyTypeObject *type, PyObject *args)
         self -> operands = PyTuple_New(0);
         self -> ops = -1;
         self -> visited = 0;
+        self -> topology = NULL;
     }
     return (PyObject *) self;
 }
@@ -168,9 +169,34 @@ static void *_backward_add(PyObject *self, PyObject *other) {
     /* other.grad += out.grad */
 }
 
-static void build_topo()
+static void set_t_graph(PyObject *s, t_graph *topology)
 {
+    node_t *node = malloc(sizeof(node_t));
+    node->value = ((Value *) s);
+    node->next = NULL;
 
+    if (!(topology->head)) {
+        node->prev = NULL;
+        topology->head = node;
+        topology->tail = node;
+    } else {
+        node->prev = topology->tail;
+        topology->tail->next = node;
+        topology->tail = node;
+    } 
+}
+
+static void build_topological_graph(PyObject *start_v, t_graph *topology)
+{
+    Value *v = ((Value *) start_v);
+    if (!(v->visited)) {
+        v->visited = 1;
+        for (int i = 0; i < PyTuple_Size(v->operands); ++i) {
+            PyObject *child = PyTuple_GetItem(((Value *) start_v)->operands, i);
+            build_topological_graph(child, topology); 
+        }
+        set_t_graph(start_v, topology);
+    }
 }
 
 /*

@@ -21,12 +21,15 @@ python -m unittest tests/test_value.py
 
 ### Notes
 
-An interesting aspect of autograd is the usage of **Topological Ordering**. A topological ordering is an ordering of the nodes in a directed graph where for each directed edge from node A to node B, node A appears before node B in the ordering. 
+An interesting aspect of autograd is the usage of [Topological Ordering](https://en.wikipedia.org/wiki/Topological_sorting). A topological ordering is an ordering of the nodes in a directed graph where for each directed edge from node A to node B, node A appears before node B in the ordering. 
+
+This is useful when constructing the backward pass in this case.
 
 #### Topological Sort Algorithm
 
 ```
 (1) Pick an unvisted node (self)
 (2) Beginning with the selected node, do a Depth First Search (DFS) exploring only unvisited nodes. 
-(3) On the recursive callback of the DFS, add the current node to the topological ordering in reverse order.
+(3) On the recursive callback of the DFS, 
+add the current node to the topological ordering in reverse order.
 ```
