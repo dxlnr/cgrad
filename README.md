@@ -33,3 +33,5 @@ This is useful when constructing the backward pass in this case.
 (3) On the recursive callback of the DFS, 
 add the current node to the topological ordering in reverse order.
 ```
+
+Implementation in C is done using [doubly linked list](https://www.geeksforgeeks.org/introduction-and-insertion-in-a-doubly-linked-list/).
