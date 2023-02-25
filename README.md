@@ -8,7 +8,7 @@ Find more information about Pytorch internals at [ezyang’s blog](http://blog.e
 
 ## Get Started
 
-```shell
+```bash
 # Building the package from source
 python setup.py install bdist_wheel
 # Installing for dev/locally
@@ -18,3 +18,15 @@ pip install -e .
 python -m unittest tests/test_value.py
 ```
 
+
+### Notes
+
+An interesting aspect of autograd is the usage of **Topological Ordering**. A topological ordering is an ordering of the nodes in a directed graph where for each directed edge from node A to node B, node A appears before node B in the ordering. 
+
+#### Topological Sort Algorithm
+
+```
+(1) Pick an unvisted node (self)
+(2) Beginning with the selected node, do a Depth First Search (DFS) exploring only unvisited nodes. 
+(3) On the recursive callback of the DFS, add the current node to the topological ordering in reverse order.
+```

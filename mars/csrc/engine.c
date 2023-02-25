@@ -2,6 +2,7 @@
 #include <Python.h>
 #include <math.h>
 
+typedef struct t_graph t_graph;
 
 typedef struct 
 {
@@ -12,12 +13,22 @@ typedef struct
     PyObject *operands;
     int ops;
     int visited;
+    t_graph *topology;
 } Value;
 
-/* struct ops_t { */
-/*     Value (*_backward_add)(Value *); */
-/*     /1* Value (*RemoveClient)(Value *); *1/ */
-/* }; */
+// Doubly Linked List 
+typedef struct {
+    Value *value;
+    struct node *next;
+    struct node *prev;
+} node_t;
+
+// Topology graph storing a pointer to the head and tail of doubly linked list.
+struct t_graph
+{
+    struct node *head;
+    struct node *tail;
+};
 
 static PyTypeObject ValueType;
 
@@ -159,6 +170,7 @@ static void *_backward_add(PyObject *self, PyObject *other) {
 
 static void build_topo()
 {
+
 }
 
 /*
@@ -191,11 +203,17 @@ static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
     return (PyObject *) res;
 }
 
-
+static PyObject *backward(Value *self, PyObject *Py_UNUSED(ignored))
+{
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef Value_methods[] = {
     {"relu", (PyCFunction) value_relu, METH_NOARGS,
      "ReLU (rectified linear unit) activation function."
+    },
+    {"backward", (PyCFunction) backward, METH_NOARGS,
+     "Computes the whole backward pass of a Value."
     },
     {NULL} 
 };
