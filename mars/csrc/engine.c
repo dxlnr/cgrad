@@ -2,21 +2,33 @@
 #include <Python.h>
 #include <math.h>
 
-/* enum Ops {Add, Sub, Mul}; */
+enum Ops {Add, Sub, Mul, Pow, Relu};
 
 typedef struct 
 {
     PyObject_HEAD
     double data;
     double grad;
+    PyObject *cache_v;
     /* enum Ops ops; */
     /* struct Value *operands; */
 } Value;
 
 static PyTypeObject ValueType;
 
+static int Value_clear(Value *self) {
+  PyObject *cache_v;
+
+  cache_v = self->cache_v;
+  self->cache_v = NULL;
+  Py_XDECREF(cache_v);
+
+  return 0;
+}
+
 static void Value_dealloc(Value *self)
 {
+    Value_clear(self);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -39,20 +51,12 @@ Value_new(PyTypeObject *type, PyObject *args)
 /* 
  * Implement Operand Options for Value
  *
- * Addition, Subtraction, Mulitplication, Power, Negative
+ * Addition, Subtraction, Mulitplication, (True) Division, Power, Negative
 */
 PyObject *value_add(PyObject *self, PyObject *other)
 {
     Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
     res->data = ((Value *) self)->data + ((Value *) other)->data;
-    res->grad = 0.0;
-    return (PyObject *) res;
-}
-
-PyObject *value_sub(PyObject *self, PyObject *other)
-{
-    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
-    res->data = ((Value *) self)->data - ((Value *) other)->data;
     res->grad = 0.0;
     return (PyObject *) res;
 }
@@ -75,11 +79,21 @@ PyObject *value_pow(PyObject *self, PyObject *power)
 
 PyObject *value_neg(PyObject *self)
 {
-    ((Value *) self)->data = ((Value *) self)->data * (double) (-1);
+    ((Value *) self)->data = ((Value *) self)->data * (double) (-1.0);
     return (PyObject *) self;
 }
 
+PyObject *value_sub(PyObject *self, PyObject *other) {
+  return value_add(self, value_neg(other));
+}
+
+PyObject *value_truediv(PyObject *self, PyObject *other) {
+  return value_mul(self, value_pow(other, PyFloat_FromDouble(-1.0)));
+}
+
+
 static PyNumberMethods Value_as_number_module = {
+    // 
     value_add,
     value_sub,
     value_mul,
@@ -99,6 +113,7 @@ static PyNumberMethods Value_as_number_module = {
     0,
     0,
     0,
+    // Core but inplace
     0,
     0,
     0,
@@ -107,11 +122,18 @@ static PyNumberMethods Value_as_number_module = {
     0,
     0,
     0,
-    0, 
     0,
     0,
+    // Divide section (with inplace)
     0,
-    0, 
+    value_truediv, 
+    0,
+    0,
+    // Indexing
+    0,
+    // Matrix Mulitply
+    0,
+    0,
 };
 
 /*
@@ -133,9 +155,15 @@ static PyGetSetDef Value_getsetters[] = {
  */
 static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
 {
-    if (self->data < 0)
-        self->data = 0.0;
-    return (PyObject *) self;
+    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0);
+
+    if (self->data < 0) {
+        res->data = (double) 0.0; 
+    } else {
+        res->data = (double) self->data; 
+    }
+    res->grad = 0.0;
+    return (PyObject *) res;
 }
 
 static PyMethodDef Value_methods[] = {
@@ -155,9 +183,10 @@ static PyTypeObject ValueType = {
     and also stores more information (AutogradMeta), which is needed for performing autograd."),
     .tp_basicsize = sizeof(Value),
     .tp_itemsize = 0,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_new = Value_new,
     .tp_dealloc = (destructor) Value_dealloc,
+    .tp_clear = (inquiry) Value_clear,
     /* .tp_members = Value_members, */
     .tp_getset = Value_getsetters,
     .tp_methods = Value_methods,

@@ -21,16 +21,17 @@ class TestValue(unittest.TestCase):
         c += 1 + c + (-a)
         d += d * 2 + (b + a).relu()
         self.assertEqual(0.0, d.data)
-        # d += 3 * d + (b - a).relu()
-        # self.assertEqual(6.0, d.data)
+        d += 3 * d + (b - a).relu()
+        self.assertEqual(6.0, d.data)
+        # Backward Pass
+        e = c - d
+        f = e**2
+        g = 2.0 /f
 
-        # e = c - d
-        # f = e**2
         # g = f / 2.0
         # g += 10.0 / f
-        # # print(f'{g.data:.4f}') 
         # g.backward()
-
+        # self.assertEqual()
 
 if __name__ == '__main__':
     unittest.main()
