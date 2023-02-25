@@ -2,7 +2,6 @@
 #include <Python.h>
 #include <math.h>
 
-enum Ops {Add, Sub, Mul, Pow, Relu};
 
 typedef struct 
 {
@@ -10,9 +9,15 @@ typedef struct
     double data;
     double grad;
     PyObject *cache_v;
-    /* enum Ops ops; */
-    /* struct Value *operands; */
+    PyObject *operands;
+    int ops;
+    int visited;
 } Value;
+
+/* struct ops_t { */
+/*     Value (*_backward_add)(Value *); */
+/*     /1* Value (*RemoveClient)(Value *); *1/ */
+/* }; */
 
 static PyTypeObject ValueType;
 
@@ -44,6 +49,10 @@ Value_new(PyTypeObject *type, PyObject *args)
     if (self != NULL) {
         self -> data = data;
         self -> grad = 0.0;
+        self -> cache_v = Py_None;
+        self -> operands = PyTuple_New(0);
+        self -> ops = -1;
+        self -> visited = 0;
     }
     return (PyObject *) self;
 }
@@ -58,6 +67,8 @@ PyObject *value_add(PyObject *self, PyObject *other)
     Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
     res->data = ((Value *) self)->data + ((Value *) other)->data;
     res->grad = 0.0;
+    res->operands = PyTuple_Pack(2, self, other);
+    res->ops = 0;
     return (PyObject *) res;
 }
 
@@ -66,6 +77,7 @@ PyObject *value_mul(PyObject *self, PyObject *other)
     Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
     res->data = ((Value *) self)->data * ((Value *) other)->data;
     res->grad = 0.0;
+    res->ops = 1;
     return (PyObject *) res;
 }
 
@@ -74,6 +86,7 @@ PyObject *value_pow(PyObject *self, PyObject *power)
     Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0);
     res->data = pow(((Value *)self)->data, PyFloat_AsDouble(power));
     res->grad = 0.0;
+    res->ops = 2;
     return (PyObject *) res;
 }
 
@@ -84,11 +97,11 @@ PyObject *value_neg(PyObject *self)
 }
 
 PyObject *value_sub(PyObject *self, PyObject *other) {
-  return value_add(self, value_neg(other));
+    return value_add(self, value_neg(other));
 }
 
 PyObject *value_truediv(PyObject *self, PyObject *other) {
-  return value_mul(self, value_pow(other, PyFloat_FromDouble(-1.0)));
+    return value_mul(self, value_pow(other, PyFloat_FromDouble(-1.0)));
 }
 
 
@@ -137,6 +150,18 @@ static PyNumberMethods Value_as_number_module = {
 };
 
 /*
+ * Backward Compute
+ */
+static void *_backward_add(PyObject *self, PyObject *other) {
+    /* (Value *) self->grad += */ 
+    /* other.grad += out.grad */
+}
+
+static void build_topo()
+{
+}
+
+/*
  * Getter & Setter for Value
  */
 static PyObject * value_get_data(Value *self, void *closure)
@@ -165,6 +190,8 @@ static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
     res->grad = 0.0;
     return (PyObject *) res;
 }
+
+
 
 static PyMethodDef Value_methods[] = {
     {"relu", (PyCFunction) value_relu, METH_NOARGS,
