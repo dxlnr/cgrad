@@ -31,25 +31,49 @@ Value_new(PyTypeObject *type, PyObject *args)
     return (PyObject *) self;
 }
 
-/// Implement Operand Options for Value.
-PyObject * value_add(PyObject * self, PyObject * other)
+/* 
+ * Implement Operand Options for Value
+ * Addition, Subtraction, Mulitplication, Power
+*/
+PyObject *value_add(PyObject *self, PyObject *other)
 {
-    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0);
-    /* res -> data = self -> data + other -> data; */
+    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
+    res->data = ((Value *) self)->data + ((Value *) other)->data;
+    res->grad = 0.0;
     return (PyObject *) res;
 }
 
+PyObject *value_sub(PyObject *self, PyObject *other)
+{
+    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
+    res->data = ((Value *) self)->data - ((Value *) other)->data;
+    res->grad = 0.0;
+    return (PyObject *) res;
+}
+
+PyObject *value_mul(PyObject *self, PyObject *other)
+{
+    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
+    res->data = ((Value *) self)->data * ((Value *) other)->data;
+    res->grad = 0.0;
+    return (PyObject *) res;
+}
+
+PyObject *value_pow(PyObject *self, PyObject *power)
+{
+    Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0);
+    res->data = pow(((Value *)self)->data, PyFloat_AsDouble(power));
+    res->grad = 0.0;
+    return (PyObject *) res;
+}
 
 static PyNumberMethods Value_as_number_module = {
     value_add,
+    value_sub,
+    value_mul,
     0,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    value_pow,
     0,
     0,
     0,
@@ -78,19 +102,22 @@ static PyNumberMethods Value_as_number_module = {
     0, 
 };
 
-/// Getter & Setter for Value
-static PyObject *
-Value_get_data(Value *self, void *closure)
+/*
+ * Getter & Setter for Value
+ */
+static PyObject * value_get_data(Value *self, void *closure)
 {
     return (PyObject *) PyFloat_FromDouble((double) self->data);
 }
 
 static PyGetSetDef Value_getsetters[] = {
-    {"data", (getter) Value_get_data, "data stored in value", NULL},
+    {"data", (getter) value_get_data, "data stored in value", NULL},
     {NULL}  
 };
 
-/// Compose the bindings.
+/*
+ * Compose the meta data of Value type & define the module.
+ */
 static PyTypeObject ValueType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "Value",
@@ -112,6 +139,9 @@ static PyModuleDef engine_module = {
     .m_size = -1,
 };
 
+/*
+ * Initialize the module and ship the bindings.
+ */ 
 PyMODINIT_FUNC
 PyInit_engine(void)
 {

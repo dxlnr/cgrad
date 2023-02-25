@@ -9,11 +9,13 @@ class TestVariable(unittest.TestCase):
         # Basic Test if the Value setup is correct.
         a = Value(-4.0)
         self.assertEqual(-4.0, a.data)
-        #
+        # Basic Addition
         b = Value(2.0)
         c = a + b
         self.assertEqual(-2.0, c.data) 
-        # d = a * b + b**3
+        # Additional Operations
+        d = a * b + b**3
+        self.assertEqual(0.0, d.data)
         # c += c + 1
         # c += 1 + c + (-a)
         # d += d * 2 + (b + a).relu()
