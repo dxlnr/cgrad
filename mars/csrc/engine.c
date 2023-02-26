@@ -142,7 +142,8 @@ PyObject *value_neg(PyObject *self)
     Py_INCREF(neg);
 
     PyObject *value = ValueType.tp_alloc(&ValueType, 0);
-    return value_mul(self, neg);
+    value = value_mul(self, neg);
+    return value;
 }
 
 PyObject *value_sub(PyObject *self, PyObject *other) {
@@ -237,11 +238,11 @@ static void *_backward_relu(PyObject *self) {
 // Define the function dispatch table 
 typedef void backward_t(PyObject *self);
 
-backward_t *_backward[4] = {
-    _backward_add,
-    _backward_mul,
-    _backward_pow,
-    _backward_relu,
+static backward_t *_backward[4] = {
+    &_backward_add,
+    &_backward_mul,
+    &_backward_pow,
+    &_backward_relu,
 };
 
 /*
