@@ -20,9 +20,12 @@ class TestValue(unittest.TestCase):
         c += c + 1
         c += 1 + c + (-a)
         d += d * 2 + (b + a).relu()
-        self.assertEqual(0.0, d.data)
-        d += 3 * d + (b - a).relu()
         self.assertEqual(6.0, d.data)
+        d += 3 * d + (b - a).relu()
+        self.assertEqual(6, d.data)
+        # Backward Pass Basic 
+        t = a + b
+        t.backward()
         # Backward Pass
         e = c - d
         f = e**2

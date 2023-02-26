@@ -32,19 +32,47 @@ struct t_graph
 
 static PyTypeObject ValueType;
 
+static int Value_traverse(Value *self, visitproc visit, void *arg)
+{
+    if (self->operands) {
+        int visited = visit(self->operands, arg);
+        if (visited != 0)
+            return visited;
+    }
+    return 0;
+}
+
+
 static int Value_clear(Value *self) {
-  PyObject *cache_v;
+    // Clear out the cache object.
+    PyObject *cache_v;
+    cache_v = self->cache_v;
+    self->cache_v = NULL;
+    Py_XDECREF(cache_v);
+    
+    // Clear out the operands.
+    PyObject *ops;
+    ops = self->operands;
+    self->operands = NULL;
+    Py_XDECREF(ops);
 
-  cache_v = self->cache_v;
-  self->cache_v = NULL;
-  Py_XDECREF(cache_v);
-
-  return 0;
+    return 0;
 }
 
 static void Value_dealloc(Value *self)
 {
     Value_clear(self);
+
+    if (((Value *) self)->topology) {
+        node_t *node = ((Value *) self)->topology->tail;
+        node_t *t;
+        while (node) {
+            t = node;
+            node = node->prev;
+            free(t);
+        }
+        free(((Value *) self)->topology);
+    }
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -164,9 +192,13 @@ static PyNumberMethods Value_as_number_module = {
 /*
  * Backward Compute
  */
-static void *_backward_add(PyObject *self, PyObject *other) {
-    /* (Value *) self->grad += */ 
-    /* other.grad += out.grad */
+static void *_backward_add(PyObject *self) {
+    Value *op1 = ((Value *)PyTuple_GetItem(((Value *)self)->operands, 0));
+    Value *op2 = ((Value *)PyTuple_GetItem(((Value *)self)->operands, 1));
+  
+    op1->grad += ((Value *) self)->grad;
+    op2->grad += ((Value *) self)->grad;
+    Py_RETURN_NONE;
 }
 
 static void set_t_graph(PyObject *s, t_graph *topology)
@@ -198,6 +230,13 @@ static void build_topological_graph(PyObject *start_v, t_graph *topology)
         set_t_graph(start_v, topology);
     }
 }
+
+// Define the function dispatch table for various backward functions.
+typedef void backward_t(PyObject *self);
+
+backward_t *_backward[1] = {
+    _backward_add,
+};
 
 /*
  * Getter & Setter for Value
@@ -231,6 +270,14 @@ static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
 
 static PyObject *backward(Value *self, PyObject *Py_UNUSED(ignored))
 {
+    
+    build_topological_graph(self, self->topology);
+    self->grad = 1.0;
+    
+    while (self->topology->tail->prev != NULL)
+    {
+        _backward[self->ops](self);
+    }
     Py_RETURN_NONE;
 }
 
@@ -257,6 +304,7 @@ static PyTypeObject ValueType = {
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_new = Value_new,
     .tp_dealloc = (destructor) Value_dealloc,
+    .tp_traverse = (traverseproc) Value_traverse,
     .tp_clear = (inquiry) Value_clear,
     /* .tp_members = Value_members, */
     .tp_getset = Value_getsetters,
