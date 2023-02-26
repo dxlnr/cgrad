@@ -9,7 +9,6 @@ typedef struct
     PyObject_HEAD
     double data;
     double grad;
-    PyObject *cache_v;
     PyObject *operands;
     int ops;
     int visited;
@@ -42,14 +41,7 @@ static int Value_traverse(Value *self, visitproc visit, void *arg)
     return 0;
 }
 
-
 static int Value_clear(Value *self) {
-    // Clear out the cache object.
-    PyObject *cache_v;
-    cache_v = self->cache_v;
-    self->cache_v = NULL;
-    Py_XDECREF(cache_v);
-    
     // Clear out the operands.
     PyObject *ops;
     ops = self->operands;
@@ -88,7 +80,6 @@ Value_new(PyTypeObject *type, PyObject *args)
     if (self != NULL) {
         self -> data = data;
         self -> grad = 0.0;
-        self -> cache_v = Py_None;
         self -> operands = PyTuple_New(0);
         self -> ops = -1;
         self -> visited = 0;
@@ -117,6 +108,7 @@ PyObject *value_mul(PyObject *self, PyObject *other)
     Value *res = (Value *) ValueType.tp_alloc(&ValueType, 0); 
     res->data = ((Value *) self)->data * ((Value *) other)->data;
     res->grad = 0.0;
+    res->operands = PyTuple_Pack(2, self, other);
     res->ops = 1;
     return (PyObject *) res;
 }
@@ -193,11 +185,20 @@ static PyNumberMethods Value_as_number_module = {
  * Backward Compute
  */
 static void *_backward_add(PyObject *self) {
-    Value *op1 = ((Value *)PyTuple_GetItem(((Value *)self)->operands, 0));
-    Value *op2 = ((Value *)PyTuple_GetItem(((Value *)self)->operands, 1));
+    Value *op1 = ((Value *)PyTuple_GetItem(((Value *) self)->operands, 0));
+    Value *op2 = ((Value *)PyTuple_GetItem(((Value *) self)->operands, 1));
   
     op1->grad += ((Value *) self)->grad;
     op2->grad += ((Value *) self)->grad;
+    Py_RETURN_NONE;
+}
+
+static void *_backward_mul(PyObject *self) {
+    Value *op1 = ((Value *)PyTuple_GetItem(((Value *) self)->operands, 0));
+    Value *op2 = ((Value *)PyTuple_GetItem(((Value *) self)->operands, 1));
+  
+    op1->grad += (op2->data) * ((Value *) self)->grad;
+    op2->grad += (op1->data) * ((Value *) self)->grad;
     Py_RETURN_NONE;
 }
 
@@ -234,8 +235,9 @@ static void build_topological_graph(PyObject *start_v, t_graph *topology)
 // Define the function dispatch table for various backward functions.
 typedef void backward_t(PyObject *self);
 
-backward_t *_backward[1] = {
+backward_t *_backward[2] = {
     _backward_add,
+    _backward_mul,
 };
 
 /*
@@ -246,11 +248,16 @@ static PyObject * value_get_data(Value *self, void *closure)
     return (PyObject *) PyFloat_FromDouble((double) self->data);
 }
 
+static PyObject * value_get_grad(Value *self, void *closure)
+{
+    return (PyObject *) PyFloat_FromDouble((double) self->grad);
+}
+
 static PyGetSetDef Value_getsetters[] = {
-    {"data", (getter) value_get_data, "data stored in value", NULL},
+    {"data", (getter) value_get_data, "data stored in Value", NULL},
+    {"grad", (getter) value_get_grad, "gradient stored in Value", NULL},
     {NULL}  
 };
-
 
 /* 
  * Custom Methods for Value
@@ -271,12 +278,20 @@ static PyObject *value_relu(Value *self, PyObject *Py_UNUSED(ignored))
 static PyObject *backward(Value *self, PyObject *Py_UNUSED(ignored))
 {
     
-    build_topological_graph(self, self->topology);
+    if (!(self->topology)) {
+        ((Value *) self)->topology = malloc(sizeof(t_graph));
+        ((Value *) self)->topology->head = NULL;
+        ((Value *) self)->topology->tail = NULL;
+        build_topological_graph(self, ((Value *) self)->topology);
+    }
     self->grad = 1.0;
     
-    while (self->topology->tail->prev != NULL)
+    node_t *node = ((Value *) self)->topology->tail;
+    while (node)
     {
-        _backward[self->ops](self);
+        if (node->value->ops >= 0)
+            _backward[node->value->ops](node->value);
+        node = node->prev;
     }
     Py_RETURN_NONE;
 }
@@ -310,6 +325,7 @@ static PyTypeObject ValueType = {
     .tp_getset = Value_getsetters,
     .tp_methods = Value_methods,
     .tp_as_number = &Value_as_number_module,
+    /* .tp_repr = (reprfunc) Value_repr, */
 };
 
 static PyModuleDef engine_module = {
