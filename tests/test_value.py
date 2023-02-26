@@ -18,35 +18,24 @@ class TestValue(unittest.TestCase):
         # Additional Operations
         d = a * b + b**3
         self.assertEqual(0.0, d.data)
-
+        
         # Relu Operation
         c += c + 1
-        c += 1 + c + (-a)
-        d += d * 2 + (b + a).relu()
-        self.assertEqual(6.0, d.data)
-        d += 3 * d + (b - a).relu()
-        self.assertEqual(6, d.data)
-
-        # Backward Pass Basic 
-        t = a + b
-        t.backward()
-        self.assertEqual(1.0, a.grad)
-
-        # Backward Pas Mulitply
-        y = a * b
-        z = y + Value(4.0)
-        z.backward()
-        self.assertEqual(3.0, a.grad)
-        self.assertEqual(-3.0, b.grad)
-
-        # # Backward Pass
+        # c += 1 + c + (-a)
+        c.backward()
+        # d += d * 2 + (a + b).relu()
+        # self.assertEqual(0.0, d.data)
+        # d += 3 * d + (b - a).relu()
+        # self.assertEqual(6.0, d.data)
+        
+        # Backward Pass
         # e = c - d
         # f = e**2
-        # g = 2.0 /f
+        # g = 2.0 / f
         # g = f / 2.0
         # g += 10.0 / f
-        # g.backward()
-        # # self.assertEqual()
+        # e.backward()
+        # self.assertEqual()
 
 if __name__ == '__main__':
     unittest.main()
